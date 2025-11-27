@@ -4,18 +4,16 @@ RAG Service - Retrieval Augmented Generation
 from typing import List, Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings
-from openai import AsyncOpenAI
 from src.config.settings import get_settings
-from sentence_transformers import SentenceTransformer 
+from sentence_transformers import SentenceTransformer
 import asyncio
-from typing import List
+from datetime import datetime
 from src.config.constants import (
     CHROMA_COLLECTION_MACRO,
     CHROMA_COLLECTION_CRYPTO,
     CHROMA_COLLECTION_NEWS
 )
 from src.utilities.logger import get_logger
-from datetime import datetime
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -29,7 +27,6 @@ class RAGService:
             chroma_db_impl="duckdb+parquet",
             persist_directory=settings.chroma_persist_directory
         ))
-        self.groq_client = AsyncOpenAI(api_key=settings.groq_api_key)
         
         # Initialize collections
         self.macro_collection = self.client.get_or_create_collection(
@@ -41,6 +38,9 @@ class RAGService:
         self.news_collection = self.client.get_or_create_collection(
             name=CHROMA_COLLECTION_NEWS
         )
+        
+        # Initialize embedding model
+        self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
     
     async def add_documents(
         self,
@@ -128,15 +128,13 @@ class RAGService:
             logger.error(f"Error querying collection: {str(e)}")
             return []
     
-    embedding_model= SentenceTransformer("all-MiniLM-L6-v2")
     async def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings using Sentence Transformers"""
         try:
-            embeddings= await asyncio.to_thread(embedding_model.encode, texts, show_progress_bar=False)
-            response = type("Response", (), {})()
-            response.data= [{"embedding": emb} for emb in embeddings]
-
-            return [item["embedding"] for item in response.data]
+            embeddings = await asyncio.to_thread(
+                self.embedding_model.encode, texts, show_progress_bar=False
+            )
+            return embeddings
         except Exception as e:
             logger.error(f"Error generating embeddings: {str(e)}")
             raise
@@ -151,7 +149,7 @@ class RAGService:
         return collections.get(collection_name, self.news_collection)
     
     async def update_macro_knowledge(self, economic_data: Dict[str, Any]):
-        """Update macro economic knowledge base"""
+        """Update macroeconomic knowledge base"""
         documents = [{
             "text": f"Economic Update: {datetime.now()}\n" + 
                    "\n".join([f"{k}: {v}" for k, v in economic_data.items()]),
@@ -191,4 +189,3 @@ class RAGService:
         
         if documents:
             await self.add_documents(documents, CHROMA_COLLECTION_NEWS)
-

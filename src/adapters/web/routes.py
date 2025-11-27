@@ -2,15 +2,13 @@
 API Routes
 """
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from datetime import datetime
 from src.application.services.analysis_service import AnalysisService
 from src.application.services.data_service import DataService
 from src.domain.value_objects.timeframe import TimeframeVO
 from src.utilities.logger import get_logger
-from src.infrastructure.database import get_db_session
-from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -50,13 +48,7 @@ class AnalysisResponse(BaseModel):
     timestamp: str
 
 
-class MarketDataRequest(BaseModel):
-    """Market data request"""
-    symbol: str = Field(..., description="Asset symbol")
-    asset_type: str = Field("crypto", description="Asset type")
-
-
-# Health Check Routes
+# Health Check Route
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """
@@ -94,7 +86,7 @@ async def health_check():
     }
 
 
-# Analysis Routes
+# Analysis Route
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_market(
     request: AnalysisRequest,
@@ -144,6 +136,7 @@ async def analyze_market(
         )
 
 
+# Quick Analysis Route
 @router.get("/analyze/{asset}")
 async def quick_analysis(
     asset: str,
@@ -175,7 +168,7 @@ async def quick_analysis(
         )
 
 
-# Market Data Routes
+# Market Data Route
 @router.get("/market/{symbol}")
 async def get_market_data(symbol: str):
     """
@@ -205,6 +198,7 @@ async def get_market_data(symbol: str):
         )
 
 
+# Trending Assets Route
 @router.get("/trending")
 async def get_trending():
     """
@@ -225,7 +219,7 @@ async def get_trending():
         )
 
 
-# Agent Status Routes
+# Agent Status Route
 @router.get("/agents/status")
 async def get_agents_status():
     """

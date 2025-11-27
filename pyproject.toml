@@ -41,6 +41,8 @@ alembic = "^1.12.1"
 httpx = "^0.25.2"
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+torch = "<2.9"
+sentence-transformers = "^5.1.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"

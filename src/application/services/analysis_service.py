@@ -43,7 +43,7 @@ class AnalysisService:
         try:
             # Check cache first
             cache_key = self._generate_cache_key(query, asset_symbol, timeframe)
-            cached = self.cache.get(cache_key, prefix=CACHE_ANALYSIS)
+            cached = self.cache.get(cache_key)
             
             if cached:
                 logger.info(f"Cache hit for analysis: {asset_symbol}")
@@ -64,8 +64,7 @@ class AnalysisService:
             self.cache.set(
                 cache_key,
                 analysis.to_dict(),
-                ttl=1800,  
-                prefix=CACHE_ANALYSIS
+                ttl=1800  # Cache for 30 minutes
             )
             
             # Store in database (async task)
@@ -88,36 +87,17 @@ class AnalysisService:
             self.cache.set(
                 cache_key,
                 analysis.to_dict(),
-                ttl=1800,
-                prefix=CACHE_ANALYSIS
+                ttl=1800  # Cache for 30 minutes
             )
         except Exception as e:
             logger.error(f"Error caching analysis: {str(e)}")
     
     async def _store_analysis(self, analysis: Analysis):
-        """Store analysis in database"""
+        """Store analysis in the database"""
         try:
-            with self.db.get_session() as session:
-                # Store in analyses table
-                query = """
-                INSERT INTO analyses (id, query, asset_symbol, outlook, confidence, 
-                                    risk_level, trading_action, analysis_data, created_at)
-                VALUES (:id, :query, :asset_symbol, :outlook, :confidence,
-                        :risk_level, :trading_action, :analysis_data, :created_at)
-                """
-                
-                session.execute(query, {
-                    "id": self._generate_analysis_id(analysis),
-                    "query": analysis.query,
-                    "asset_symbol": analysis.asset_symbol,
-                    "outlook": analysis.outlook.value,
-                    "confidence": analysis.overall_confidence,
-                    "risk_level": analysis.risk_level.value,
-                    "trading_action": analysis.trading_action.value,
-                    "analysis_data": json.dumps(analysis.to_dict()),
-                    "created_at": analysis.created_at
-                })
-                
+            async with self.db.get_session() as session:
+                session.add(analysis)
+                logger.info("Analysis stored successfully.")
         except Exception as e:
             logger.error(f"Error storing analysis: {str(e)}")
     

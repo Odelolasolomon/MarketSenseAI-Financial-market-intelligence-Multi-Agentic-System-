@@ -23,6 +23,7 @@ wheels/
 venv/
 env/
 ENV/
+uv/ 
 
 # IDE
 .vscode/
@@ -34,7 +35,6 @@ ENV/
 # Environment
 .env
 .env.local
-.env.example
 
 # Database
 *.db
