@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.sql import text
-from contextlib import contextmanager
-from typing import Generator
+from contextlib import contextmanager, asynccontextmanager
+from typing import Generator, AsyncGenerator
 from src.config.settings import get_settings
 from src.utilities.logger import get_logger
 
@@ -13,7 +13,7 @@ settings = get_settings()
 engine = create_engine(
     settings.database_url,
     connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
-    pool_pre_ping=True  # Added for better connection health checking
+    pool_pre_ping=True
 )
 
 # Create session
@@ -22,6 +22,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Metadata for table creation
 metadata = MetaData()
 
+# Keep the existing synchronous context manager
 @contextmanager
 def get_db_session() -> Generator[Session, None, None]:
     """Context manager for database sessions with proper error handling"""
@@ -29,6 +30,21 @@ def get_db_session() -> Generator[Session, None, None]:
     try:
         yield db
         db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Database session error: {str(e)}")
+        raise
+    finally:
+        db.close()
+
+# ADD THIS: Async context manager
+@asynccontextmanager
+async def get_db_session_async() -> AsyncGenerator[Session, None]:
+    """Async context manager for database sessions"""
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()  # Note: SQLAlchemy ORM is synchronous
     except Exception as e:
         db.rollback()
         logger.error(f"Database session error: {str(e)}")
@@ -58,6 +74,21 @@ class DatabaseManager:
     @contextmanager
     def get_session(self) -> Generator[Session, None, None]:
         """Provide a transactional scope around a series of operations."""
+        session = self.SessionLocal()
+        try:
+            yield session
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error during database session: {str(e)}")
+            raise
+        finally:
+            session.close()
+
+    # ADD THIS: Async version
+    @asynccontextmanager
+    async def get_session_async(self) -> AsyncGenerator[Session, None]:
+        """Async version: Provide a transactional scope around a series of operations."""
         session = self.SessionLocal()
         try:
             yield session

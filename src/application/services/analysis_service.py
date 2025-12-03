@@ -95,7 +95,8 @@ class AnalysisService:
     async def _store_analysis(self, analysis: Analysis):
         """Store analysis in the database"""
         try:
-            async with self.db.get_session() as session:
+            # USE THE ASYNC VERSION
+            async with self.db.get_session_async() as session:
                 session.add(analysis)
                 logger.info("Analysis stored successfully.")
         except Exception as e:

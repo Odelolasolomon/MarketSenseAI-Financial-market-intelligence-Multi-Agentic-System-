@@ -9,9 +9,11 @@ from src.application.services.tts_service import TTSService
 from src.application.services.speech_service import SpeechService
 from src.application.services.translation_service import TranslationService
 from src.adapters.external.binance_client import BinanceClient
-from src.utilities.logger import get_logger
+from src.adapters.external.coingecko_client import CoinGeckoClient 
+from src.utilities.logger import get_logger 
 import pandas as pd
 from ta import momentum, trend, volatility
+from datetime import datetime, timedelta
 
 logger = get_logger(__name__)
 
@@ -138,25 +140,119 @@ Provide comprehensive technical analysis with specific price levels."""
             }
     
     async def _collect_technical_data(self, symbol: str) -> Dict[str, Any]:
-        """Collect and calculate technical indicators"""
+        """Collect and calculate technical indicators with fallback to CoinGecko"""
         try:
-            # Get price data from Binance
-            async with BinanceClient() as binance:
-                ticker = await binance.get_24h_ticker(f"{symbol}USDT")
-                klines = await binance.get_klines(f"{symbol}USDT", interval="1d", limit=200)
+            # Try Binance first
+            return await self._get_binance_data(symbol)
+        except Exception as binance_error:
+            logger.warning(f"Binance data collection failed: {str(binance_error)}, falling back to CoinGecko")
+            try:
+                return await self._get_coingecko_data(symbol)
+            except Exception as coingecko_error:
+                logger.error(f"CoinGecko data collection also failed: {str(coingecko_error)}")
+                return {}
+    
+    async def _get_binance_data(self, symbol: str) -> Dict[str, Any]:
+        """Get data from Binance and calculate indicators"""
+        async with BinanceClient() as binance:
+            ticker = await binance.get_24h_ticker(f"{symbol}USDT")
+            klines = await binance.get_klines(f"{symbol}USDT", interval="1d", limit=200)
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(klines, columns=[
+            'timestamp', 'open', 'high', 'low', 'close', 'volume',
+            'close_time', 'quote_volume', 'trades', 'taker_buy_base',
+            'taker_buy_quote', 'ignore'
+        ])
+        
+        # Convert to numeric
+        for col in ['open', 'high', 'low', 'close', 'volume']:
+            df[col] = pd.to_numeric(df[col])
+        
+        # Calculate indicators
+        indicators = self._calculate_indicators(df)
+        
+        current_price = float(ticker['lastPrice'])
+        
+        return {
+            "source": "binance",
+            "current_price": current_price,
+            "24h_change": float(ticker['priceChangePercent']),
+            "24h_volume": float(ticker['volume']),
+            "24h_high": float(ticker['highPrice']),
+            "24h_low": float(ticker['lowPrice']),
+            "technical_indicators": indicators
+        }
+    
+    async def _get_coingecko_data(self, symbol: str) -> Dict[str, Any]:
+        """Get data from CoinGecko and calculate indicators"""
+        async with CoinGeckoClient() as coingecko:
+            # Convert symbol to CoinGecko ID
+            coin_id = coingecko.normalize_symbol(symbol)
             
-            # Convert to DataFrame
-            df = pd.DataFrame(klines, columns=[
-                'timestamp', 'open', 'high', 'low', 'close', 'volume',
-                'close_time', 'quote_volume', 'trades', 'taker_buy_base',
-                'taker_buy_quote', 'ignore'
-            ])
+            # Get current price and 24h data
+            simple_price = await coingecko.get_simple_price(
+                coin_ids=[coin_id],
+                include_24h_change=True,
+                include_market_cap=True,
+                include_24h_volume=True
+            )
             
-            # Convert to numeric
-            for col in ['open', 'high', 'low', 'close', 'volume']:
-                df[col] = pd.to_numeric(df[col])
+            # Get historical data for technical indicators
+            market_chart = await coingecko.get_market_chart(
+                coin_id=coin_id,
+                vs_currency="usd",
+                days=200
+            )
             
-            # Calculate indicators
+            # Get comprehensive coin data
+            coin_data = await coingecko.get_coin_data(coin_id)
+        
+        # Extract price data
+        prices = market_chart.get('prices', [])
+        if not prices:
+            raise ValueError("No price data available from CoinGecko")
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(prices, columns=['timestamp', 'close'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        
+        # For more accurate indicators, we need OHLC data
+        # CoinGecko's market_chart only provides closing prices
+        # We'll approximate high/low using rolling windows
+        df['high'] = df['close'].rolling(window=24, min_periods=1).max()
+        df['low'] = df['close'].rolling(window=24, min_periods=1).min()
+        df['open'] = df['close'].shift(1).fillna(df['close'])
+        
+        # Calculate indicators
+        indicators = self._calculate_indicators(df)
+        
+        # Extract current data
+        coin_price_data = simple_price.get(coin_id, {})
+        current_price = coin_price_data.get('usd', 0)
+        price_change_24h = coin_price_data.get('usd_24h_change', 0)
+        volume_24h = coin_price_data.get('usd_24h_vol', 0)
+        
+        # Get 24h high/low from coin data
+        market_data = coin_data.get('market_data', {})
+        high_24h = market_data.get('high_24h', {}).get('usd', current_price)
+        low_24h = market_data.get('low_24h', {}).get('usd', current_price)
+        
+        return {
+            "source": "coingecko",
+            "current_price": current_price,
+            "24h_change": price_change_24h,
+            "24h_volume": volume_24h,
+            "24h_high": high_24h,
+            "24h_low": low_24h,
+            "market_cap": coin_price_data.get('usd_market_cap', 0),
+            "technical_indicators": indicators,
+            "note": "Technical indicators calculated from daily closing prices (CoinGecko limitation)"
+        }
+    
+    def _calculate_indicators(self, df: pd.DataFrame) -> Dict[str, float]:
+        """Calculate technical indicators from DataFrame"""
+        try:
             close = df['close']
             
             # RSI
@@ -169,33 +265,24 @@ Provide comprehensive technical analysis with specific price levels."""
             macd_signal = macd_indicator.macd_signal().iloc[-1]
             
             # Moving Averages
-            sma_50 = trend.SMAIndicator(close, window=50).sma_indicator().iloc[-1]
-            sma_200 = trend.SMAIndicator(close, window=200).sma_indicator().iloc[-1]
+            sma_50 = trend.SMAIndicator(close, window=min(50, len(close))).sma_indicator().iloc[-1]
+            sma_200 = trend.SMAIndicator(close, window=min(200, len(close))).sma_indicator().iloc[-1]
             
             # Bollinger Bands
             bb = volatility.BollingerBands(close)
             bb_upper = bb.bollinger_hband().iloc[-1]
             bb_lower = bb.bollinger_lband().iloc[-1]
             
-            current_price = float(ticker['lastPrice'])
-            
             return {
-                "current_price": current_price,
-                "24h_change": float(ticker['priceChangePercent']),
-                "24h_volume": float(ticker['volume']),
-                "24h_high": float(ticker['highPrice']),
-                "24h_low": float(ticker['lowPrice']),
-                "technical_indicators": {
-                    "rsi": round(rsi, 2),
-                    "macd": round(macd, 2),
-                    "macd_signal": round(macd_signal, 2),
-                    "sma_50": round(sma_50, 2),
-                    "sma_200": round(sma_200, 2),
-                    "bb_upper": round(bb_upper, 2),
-                    "bb_lower": round(bb_lower, 2)
-                }
+                "rsi": round(float(rsi), 2) if pd.notna(rsi) else None,
+                "macd": round(float(macd), 2) if pd.notna(macd) else None,
+                "macd_signal": round(float(macd_signal), 2) if pd.notna(macd_signal) else None,
+                "sma_50": round(float(sma_50), 2) if pd.notna(sma_50) else None,
+                "sma_200": round(float(sma_200), 2) if pd.notna(sma_200) else None,
+                "bb_upper": round(float(bb_upper), 2) if pd.notna(bb_upper) else None,
+                "bb_lower": round(float(bb_lower), 2) if pd.notna(bb_lower) else None
             }
             
         except Exception as e:
-            logger.error(f"Error collecting technical data: {str(e)}")
+            logger.error(f"Error calculating indicators: {str(e)}")
             return {}

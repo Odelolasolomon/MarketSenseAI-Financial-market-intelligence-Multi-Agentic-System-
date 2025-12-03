@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Asset AI App</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <img src="assets/logo.png" alt="App Logo" class="logo">
+    <h1>Multi-Asset AI App</h1>
+  </header>
+
+  <main>
+    <!-- Query Input Section -->
+    <section class="query-section">
+      <textarea id="query-input" placeholder="Ask about Forex, Crypto, or News..."></textarea>
+      <div class="query-actions">
+        <button id="submit-query">Submit</button>
+        <button id="microphone-button">
+          <img src="assets/microphone.png" alt="Microphone">
+        </button>
+      </div>
+    </section>
+
+    <!-- AI Response Section -->
+    <section class="response-section">
+      <h2>AI Response</h2>
+      <div id="response-container"></div>
+      <button id="play-audio" class="hidden">
+        <img src="assets/play.png" alt="Play Audio">
+      </button>
+    </section>
+
+    <!-- Dashboard Section -->
+    <section class="dashboard-section">
+      <h2>Market Insights</h2>
+      <div id="market-cards" class="cards-container"></div>
+    </section>
+
+    <!-- RAG Document Viewer -->
+    <section class="rag-section">
+      <h2>Knowledge Base</h2>
+      <input type="text" id="rag-search" placeholder="Search knowledge base...">
+      <button id="search-rag">Search</button>
+      <div id="rag-results"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 Multi-Asset AI App. All rights reserved.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

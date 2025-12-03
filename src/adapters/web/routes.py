@@ -106,7 +106,7 @@ async def analyze_market(
     Perform comprehensive market analysis
     
     This endpoint coordinates multiple AI agents to provide
-    a comprehensive investment analysis for the requested asset.
+    a comprehensive forex and crypto investment analysis for the requested asset.
     """
     try:
         logger.info(f"Analysis request: {request.query} for {request.asset}")

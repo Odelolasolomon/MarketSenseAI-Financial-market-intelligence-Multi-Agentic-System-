@@ -3,7 +3,7 @@ FRED (Federal Reserve Economic Data) API Client
 """
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
-import aiohttp
+import aiohttp 
 from src.config.settings import get_settings
 from src.utilities.logger import get_logger
 from src.error_trace.exceptions import ExternalAPIError

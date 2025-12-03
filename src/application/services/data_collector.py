@@ -3,29 +3,37 @@
 import asyncio
 from typing import List
 from datetime import datetime
+import json
 from src.adapters.external.binance_client import BinanceClient
 from src.adapters.external.fred_client import FREDClient
 from src.adapters.external.newsapi_client import NewsAPIClient
-from src.application.services.rag_service import RAGService
 from src.infrastructure.cache import get_cache
 from src.config.constants import CRYPTO_PAIRS
 from src.utilities.logger import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger(__name__)  # Fixed: changed _name_ to __name__
 
 
 class DataCollector:
     """Collects and indexes market data in background"""
     
-    def __init__(self):
-        self.rag_service = RAGService()
+    def __init__(self, rag_service=None):  # Fixed: changed _init_ to __init__
+        self.rag_service = rag_service  # Accept RAGService as parameter
         self.cache = get_cache()
         self.running = False
+    
+    def set_rag_service(self, rag_service):
+        """Set RAG service after initialization"""
+        self.rag_service = rag_service
     
     async def collect_crypto_data(self):
         """Collect cryptocurrency data"""
         try:
             logger.info("Collecting crypto data...")
+            
+            if not self.rag_service:
+                logger.warning("RAG service not set, skipping crypto data collection")
+                return
             
             async with BinanceClient() as binance:
                 for pair in CRYPTO_PAIRS[:5]:  # Top 5 pairs
@@ -59,6 +67,10 @@ class DataCollector:
         try:
             logger.info("Collecting economic data...")
             
+            if not self.rag_service:
+                logger.warning("RAG service not set, skipping economic data collection")
+                return
+            
             async with FREDClient() as fred:
                 economic_data = await fred.get_economic_indicators()
                 
@@ -74,6 +86,10 @@ class DataCollector:
         """Collect news articles"""
         try:
             logger.info("Collecting news data...")
+            
+            if not self.rag_service:
+                logger.warning("RAG service not set, skipping news data collection")
+                return
             
             async with NewsAPIClient() as news_api:
                 # Crypto news
