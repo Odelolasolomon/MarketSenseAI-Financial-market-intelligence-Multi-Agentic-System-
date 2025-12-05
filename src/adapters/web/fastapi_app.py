@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from pydantic import BaseModel
 from src.config.settings import get_settings
 from src.utilities.logger import get_logger, setup_logging
 from src.error_trace.exceptions import MultiAssetAIException
@@ -15,6 +16,13 @@ settings = get_settings()
 
 # Initialize logging
 setup_logging()
+
+
+# Response models
+class HealthResponse(BaseModel):
+    """Health check response model"""
+    status: str
+    service: str
 
 
 def create_app() -> FastAPI:
@@ -116,10 +124,10 @@ def create_app() -> FastAPI:
         logger.info("Shutting down Multi-Asset AI API...")
     
     # Root health endpoint for Cloud Run health checks
-    @app.get("/", response_model={"status": str, "service": str})
+    @app.get("/", response_model=HealthResponse)
     async def root_health():
         """Root health check - Cloud Run calls this endpoint"""
-        return {"status": "healthy", "service": "MarketSenseAI"}
+        return HealthResponse(status="healthy", service="MarketSenseAI")
     
     # Include routers
     from src.adapters.web.api_routes import router
@@ -131,5 +139,18 @@ def create_app() -> FastAPI:
     return app
 
 
-# Create app instance
-app = create_app()
+# Create app instance lazily to avoid import-time errors
+try:
+    app = create_app()
+except Exception as e:
+    logger.error(f"Failed to create app: {str(e)}", exc_info=True)
+    # Create a minimal app for health checks
+    app = FastAPI(title="Multi-Asset AI", version="0.1.0")
+    
+    class HealthResponse(BaseModel):
+        status: str
+        service: str
+    
+    @app.get("/", response_model=HealthResponse)
+    async def fallback_health():
+        return HealthResponse(status="error", service="MarketSenseAI")
