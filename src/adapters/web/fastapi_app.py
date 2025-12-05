@@ -117,7 +117,10 @@ def create_app() -> FastAPI:
     
     # Include routers
     from src.adapters.web.api_routes import router
+    from src.adapters.web.routes.langchain_memory_routes import router as langchain_memory_router
+    
     app.include_router(router, prefix="/api/v1")
+    app.include_router(langchain_memory_router)
     
     return app
 

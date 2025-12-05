@@ -1,6 +1,7 @@
 """"
 Synthesis Agent - Coordinates all agents and synthesizes analysis
 FIXED VERSION - Handles both dict and object returns from agents
+LANGCHAIN VERSION - Integrates LangChain ConversationBufferMemory
 """
 import json
 import asyncio
@@ -14,6 +15,7 @@ from src.application.services.tts_service import TTSService
 from src.application.services.speech_service import SpeechService
 from src.application.services.translation_service import TranslationService
 from src.application.services.conversation_manager import ConversationManager
+from src.application.services.langchain_memory_service import LangChainMemoryService
 from src.domain.entities.analysis import Analysis, AgentAnalysis
 from src.domain.entities.conversation import MessageRole
 from src.domain.value_objects.timeframe import TimeframeVO
@@ -152,19 +154,31 @@ Provide synthesis in JSON format:
             
             asset_symbol = context.get("asset_symbol", "MARKET") if context else "MARKET"
             
-            # Handle conversation memory
-            session_id = context.get("session_id") if context else None
-            conversation_id = context.get("conversation_id") if context else None
+            # Handle LangChain conversation memory
+            memory_id = context.get("memory_id") if context else None
+            if not memory_id:
+                # Create new memory if not provided
+                memory_id, _ = LangChainMemoryService.create_memory()
+                logger.info(f"Created new LangChain memory: {memory_id}")
             
-            # Inject conversation context if available
-            conversation_context = ""
-            if session_id and conversation_id:
-                conversation_context = ConversationManager.get_context_injection(session_id, conversation_id)
-                if conversation_context:
-                    logger.info(f"Injecting conversation context for {conversation_id}")
+            # Get or load existing memory
+            langchain_memory = LangChainMemoryService.get_memory(memory_id)
+            if not langchain_memory:
+                memory_id, langchain_memory = LangChainMemoryService.create_memory(memory_id)
             
-            # Append conversation context to query if available
-            enriched_query = f"{query_in_english}\n\n[Previous context:\n{conversation_context}]" if conversation_context else query_in_english
+            # Get formatted conversation history
+            memory_variables = LangChainMemoryService.get_memory_variables(memory_id)
+            conversation_history = memory_variables.get("history", "")
+            
+            # Append conversation history to query if available
+            enriched_query = f"{query_in_english}\n\n[Conversation History:\n{conversation_history}]" if conversation_history else query_in_english
+            
+            if conversation_history:
+                logger.info(f"Injecting LangChain conversation history ({LangChainMemoryService.get_message_count(memory_id)} messages)")
+            
+            # Store memory_id in context for later use
+            if context:
+                context["memory_id"] = memory_id
             
             # Retrieve context using RAGService
             documents = await self.rag_service.query_collection(query_in_english, "macro")
@@ -241,7 +255,25 @@ Provide synthesis in JSON format:
                 sentiment_result=sentiment_result
             )
             
-            # Store in conversation memory if available
+            # Store in LangChain memory
+            try:
+                assistant_response = synthesis.get("final_response", synthesis.get("executive_summary", ""))
+                
+                # Add query and response to LangChain memory
+                LangChainMemoryService.add_messages(
+                    memory_id,
+                    user_message=query,
+                    ai_message=assistant_response
+                )
+                logger.info(f"Stored query/response in LangChain memory: {memory_id}")
+                
+            except Exception as e:
+                logger.error(f"Error storing in LangChain memory: {str(e)}")
+            
+            # Also store in legacy conversation memory if available (backward compatibility)
+            session_id = context.get("session_id") if context else None
+            conversation_id = context.get("conversation_id") if context else None
+            
             if session_id and conversation_id:
                 try:
                     # Add user query to conversation

@@ -107,7 +107,8 @@ IMPORTANT: Only respond with valid JSON. No explanations, no markdown formatting
             asset_symbol = context.get('asset_symbol', '').upper() if context else ''
             
             # Translate query to English if needed
-            query_in_english = await self.translation_service.translate_text(query)
+            user_language = context.get('language', 'en') if context else 'en'
+            query_in_english = self.translation_service.translate_text(query, src=user_language, dest='en')
             
             # Collect data from multiple sources
             economic_data = await self._collect_economic_data()
