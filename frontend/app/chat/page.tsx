@@ -59,32 +59,29 @@ const TIMEFRAMES = ["short", "medium", "long"] as const;
 
 export default function ChatPage() {
   const [input, setInput] = useState("");
-  const [selectedAsset, setSelectedAsset] = useState<string>("BTC/USDT");
+  const [selectedAsset, setSelectedAsset] = useState<string>("BTC");
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>("medium");
 
   const { messages, sendMessage, status, regenerate } = useChat();
 
   const handleSubmit = (message: PromptInputMessage) => {
-    const hasText = Boolean(message.text.trim());
+  const hasText = Boolean(message.text.trim());
 
-    // Early return if there's no text to send
-    if (!hasText) {
-      return;
-    }
+  if (!hasText) {
+    return;
+  }
 
-    if (input.trim()) {
-      sendMessage(
-        { text: message.text.trim() },
-        {
-          body: {
-            asset: selectedAsset,
-            timeframe: selectedTimeframe,
-          },
-        }
-      );
-      setInput("");
+  sendMessage(
+    { text: message.text.trim() },
+    {
+      body: {
+        asset: selectedAsset,
+        timeframe: selectedTimeframe,
+      },
     }
-  };
+  );
+  setInput("");
+};
 
   const handleSuggestionClick = (suggestion: string) => {
     sendMessage(

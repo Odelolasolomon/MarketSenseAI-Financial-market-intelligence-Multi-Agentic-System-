@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { streamText } from "ai";
+import { streamText, UIMessage } from "ai";
 
 export const runtime = "edge";
 
@@ -8,15 +8,13 @@ export async function POST(req: Request) {
 
   const { messages, asset, timeframe }: { messages: UIMessage[]; asset?: string; timeframe?: string } = body;
 
-  console.log("Received request with body:", body);  
-
   if (
     !Array.isArray(messages) ||
     messages.length === 0 ||
     !messages[messages.length - 1] ||
     !Array.isArray(messages[messages.length - 1].parts)
   ) {
-    return new Response("Invalid message format", { status: 400 });
+    return new Response("Invalid or empty messages array", { status: 400 });
   }
 
   const lastMessage = messages[messages.length - 1].parts.find(
@@ -24,7 +22,7 @@ export async function POST(req: Request) {
   );
   
   if (!lastMessage || !lastMessage.text) {
-    return new Response("Invalid message format", { status: 400 });
+    return new Response("Message must contain text content", { status: 400 });
   }
 
   // Validate required parameters
@@ -42,15 +40,21 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           query: lastMessage.text,
-          asset: asset,
-          timeframe: timeframe,
+          asset,
+          timeframe,
         }),
       }
     );
 
     if (!response.ok) {
-      return new Response("Error from backend", { status: 500 });
-    }
+  const errorData = await response.json().catch(() => ({}));
+  return new Response(
+    JSON.stringify({ 
+      error: errorData.error || errorData.message || "Error from backend" 
+    }), 
+    { status: response.status }
+  );
+}
 
     const analysisData = await response.json();
     console.log("Response from backend:", analysisData);
