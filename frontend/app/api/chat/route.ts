@@ -6,7 +6,11 @@ export const runtime = "edge";
 export async function POST(req: Request) {
   const body = await req.json();
 
-  const { messages, asset, timeframe }: { messages: UIMessage[]; asset?: string; timeframe?: string } = body;
+  const {
+    messages,
+    asset,
+    timeframe,
+  }: { messages: UIMessage[]; asset?: string; timeframe?: string } = body;
 
   if (
     !Array.isArray(messages) ||
@@ -20,7 +24,7 @@ export async function POST(req: Request) {
   const lastMessage = messages[messages.length - 1].parts.find(
     (part) => part.type === "text"
   );
-  
+
   if (!lastMessage || !lastMessage.text) {
     return new Response("Message must contain text content", { status: 400 });
   }
@@ -47,17 +51,16 @@ export async function POST(req: Request) {
     );
 
     if (!response.ok) {
-  const errorData = await response.json().catch(() => ({}));
-  return new Response(
-    JSON.stringify({ 
-      error: errorData.error || errorData.message || "Error from backend" 
-    }), 
-    { status: response.status }
-  );
-}
+      const errorData = await response.json().catch(() => ({}));
+      return new Response(
+        JSON.stringify({
+          error: errorData.error || errorData.message || "Error from backend",
+        }),
+        { status: response.status }
+      );
+    }
 
     const analysisData = await response.json();
-    console.log("Response from backend:", analysisData);
 
     const result = streamText({
       model: google("gemini-2.5-flash"),

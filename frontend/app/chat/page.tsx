@@ -6,7 +6,6 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { Loader } from "@/components/ai-elements/loader";
 import {
   Message,
   MessageAction,
@@ -23,6 +22,8 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
+import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { CustomLoader } from "@/components/custom-loader";
 import {
   Select,
   SelectContent,
@@ -30,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 
 import { useChat } from "@ai-sdk/react";
 import { CopyIcon, RefreshCcwIcon } from "lucide-react";
@@ -65,23 +65,23 @@ export default function ChatPage() {
   const { messages, sendMessage, status, regenerate } = useChat();
 
   const handleSubmit = (message: PromptInputMessage) => {
-  const hasText = Boolean(message.text.trim());
+    const hasText = Boolean(message.text.trim());
 
-  if (!hasText) {
-    return;
-  }
-
-  sendMessage(
-    { text: message.text.trim() },
-    {
-      body: {
-        asset: selectedAsset,
-        timeframe: selectedTimeframe,
-      },
+    if (!hasText) {
+      return;
     }
-  );
-  setInput("");
-};
+
+    sendMessage(
+      { text: message.text.trim() },
+      {
+        body: {
+          asset: selectedAsset,
+          timeframe: selectedTimeframe,
+        },
+      }
+    );
+    setInput("");
+  };
 
   const handleSuggestionClick = (suggestion: string) => {
     sendMessage(
@@ -94,6 +94,15 @@ export default function ChatPage() {
       }
     );
   };
+
+  const isLoading =
+    status === "submitted" ||
+    (status === "streaming" &&
+      !Boolean(
+        messages[messages.length - 1]?.parts.some(
+          (part) => part.type === "text" && Boolean(part.text)
+        )
+      ));
 
   return (
     <div className="max-w-4xl mx-auto p-6 relative size-full h-screen font-mono">
@@ -149,7 +158,7 @@ export default function ChatPage() {
               ))
             )}
 
-            {status === "submitted" && <Loader />}
+            {isLoading && <CustomLoader />}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
