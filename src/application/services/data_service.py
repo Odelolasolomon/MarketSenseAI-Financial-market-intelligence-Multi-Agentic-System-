@@ -8,7 +8,7 @@ from src.adapters.external.coingecko_client import CoinGeckoClient
 from src.adapters.external.fred_client import FREDClient
 from src.domain.entities.market_data import MarketData
 from src.domain.entities.asset import Asset
-from src.config.constants import AssetType
+from src.config.constants import AssetType 
 from src.infrastructure.cache import get_cache, CACHE_MARKET_DATA
 from src.utilities.logger import get_logger
 

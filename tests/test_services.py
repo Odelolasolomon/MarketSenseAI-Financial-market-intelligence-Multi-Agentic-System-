@@ -99,3 +99,5 @@ class TestAnalysisService:
             )
             
             assert result.asset_symbol == "BTC"
+ 
+ 

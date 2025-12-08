@@ -99,7 +99,10 @@ def create_app() -> FastAPI:
         # Initialize database (non-blocking)
         try:
             from src.infrastructure.database import get_db
-
+            # Import ORM mappings to enforce table registration with metadata
+            from src.infrastructure.orm import start_mappers
+            start_mappers()
+            
             db = get_db()
             db.create_tables()
             logger.info("Database initialized")
@@ -115,6 +118,8 @@ def create_app() -> FastAPI:
                 logger.info("Cache connection established")
         except Exception as e:
             logger.warning(f"Cache initialization deferred: {str(e)}")
+
+        # Cache initialization (kept separate)
 
     # Shutdown event
     @app.on_event("shutdown")

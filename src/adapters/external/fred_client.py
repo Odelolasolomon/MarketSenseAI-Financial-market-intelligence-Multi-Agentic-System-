@@ -23,7 +23,7 @@ class FREDClient:
         "inflation_cpi": "CPIAUCSL",
         "unemployment": "UNRATE",
         "gdp": "GDP",
-        "pce": "PCE",
+        "pce": "PCE", 
         "treasury_10y": "DGS10",
         "treasury_2y": "DGS2",
         "m2_money_supply": "M2SL",
@@ -131,7 +131,7 @@ class FREDClient:
             series_id: FRED series ID
             
         Returns:
-            Latest value or None
+            Latest value or None  
         """
         data = await self.get_series(series_id, limit=1)
         observations = data.get("observations", [])

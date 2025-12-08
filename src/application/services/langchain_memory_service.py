@@ -5,7 +5,7 @@ Integrates LangChain's ConversationBufferMemory with persistence layer
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 import uuid
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferWindowMemory
 from langchain.schema import HumanMessage, AIMessage, BaseMessage
 from src.infrastructure.cache import get_cache
 from src.utilities.logger import get_logger
@@ -13,14 +13,14 @@ from src.utilities.logger import get_logger
 logger = get_logger(__name__)
 
 # In-memory storage of active memory instances
-_memory_instances: Dict[str, ConversationBufferMemory] = {}
+_memory_instances: Dict[str, ConversationBufferWindowMemory] = {}
 MEMORY_CACHE_PREFIX = "langchain_memory:"
 MEMORY_EXPIRY = 7 * 24 * 60 * 60  # 7 days
 
 
 class LangChainMemoryService:
     """
-    Service for managing LangChain ConversationBufferMemory with persistence
+    Service for managing LangChain ConversationBufferWindowMemory with persistence
     
     Combines LangChain's memory management with Redis persistence
     """
@@ -40,9 +40,9 @@ class LangChainMemoryService:
         memory_id: Optional[str] = None,
         llm=None,
         return_messages: bool = True
-    ) -> tuple[str, ConversationBufferMemory]:
+    ) -> tuple[str, ConversationBufferWindowMemory]:
         """
-        Create a new ConversationBufferMemory instance
+        Create a new ConversationBufferWindowMemory instance
         
         Args:
             memory_id: Optional memory identifier (generates if not provided)
@@ -50,15 +50,16 @@ class LangChainMemoryService:
             return_messages: Whether to return messages as list
             
         Returns:
-            Tuple of (memory_id, ConversationBufferMemory instance)
+            Tuple of (memory_id, ConversationBufferWindowMemory instance)
         """
         if memory_id is None:
             memory_id = str(uuid.uuid4())
         
-        memory = ConversationBufferMemory(
+        memory = ConversationBufferWindowMemory(
             return_messages=return_messages,
             human_prefix="User",
-            ai_prefix="Assistant"
+            ai_prefix="Assistant",
+            k=5
         )
         
         _memory_instances[memory_id] = memory
@@ -67,7 +68,7 @@ class LangChainMemoryService:
         return memory_id, memory
     
     @staticmethod
-    def get_memory(memory_id: str) -> Optional[ConversationBufferMemory]:
+    def get_memory(memory_id: str) -> Optional[ConversationBufferWindowMemory]:
         """Get memory instance by ID"""
         # Check in-memory first
         if memory_id in _memory_instances:
@@ -80,6 +81,46 @@ class LangChainMemoryService:
             return memory
         
         return None
+    
+    @staticmethod
+    def add_user_message(memory_id: str, message: str) -> bool:
+        """
+        Add a user message to memory
+        
+        Args:
+            memory_id: Memory instance ID
+            message: User message content
+            
+        Returns:
+            True if successful
+        """
+        memory = LangChainMemoryService.get_memory(memory_id)
+        if not memory:
+            logger.warning(f"Memory not found: {memory_id}")
+            return False
+        
+        try:
+            memory.chat_memory.add_user_message(message)
+            LangChainMemoryService._persist_memory(memory_id, memory)
+            logger.debug(f"Added user message to {memory_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error adding user message: {str(e)}")
+            return False
+
+    # ... (skipping unchanged methods for brevity in replacement chunk if possible, but replace_file_content needs contiguous block. 
+    # I will target get_memory specifically first, then perform another replace for _persist_memory or do a larger block if they are close.)
+    # Actually, let's just do get_memory first.
+
+    @staticmethod
+    def _persist_memory(memory_id: str, memory: ConversationBufferWindowMemory) -> None:
+        """
+        Persist memory to cache
+        
+        Args:
+            memory_id: Memory instance ID
+            memory: ConversationBufferWindowMemory instance
+        """
     
     @staticmethod
     def add_user_message(memory_id: str, message: str) -> bool:
@@ -274,13 +315,13 @@ class LangChainMemoryService:
             return False
     
     @staticmethod
-    def _persist_memory(memory_id: str, memory: ConversationBufferMemory) -> None:
+    def _persist_memory(memory_id: str, memory: ConversationBufferWindowMemory) -> None:
         """
         Persist memory to cache
         
         Args:
             memory_id: Memory instance ID
-            memory: ConversationBufferMemory instance
+            memory: ConversationBufferWindowMemory instance
         """
         try:
             cache_key = f"{MEMORY_CACHE_PREFIX}{memory_id}"
@@ -313,7 +354,7 @@ class LangChainMemoryService:
             logger.error(f"Error persisting memory: {str(e)}")
     
     @staticmethod
-    def _load_from_cache(memory_id: str) -> Optional[ConversationBufferMemory]:
+    def _load_from_cache(memory_id: str) -> Optional[ConversationBufferWindowMemory]:
         """
         Load memory from cache
         
@@ -321,7 +362,7 @@ class LangChainMemoryService:
             memory_id: Memory instance ID
             
         Returns:
-            ConversationBufferMemory instance or None
+            ConversationBufferWindowMemory instance or None
         """
         try:
             cache_key = f"{MEMORY_CACHE_PREFIX}{memory_id}"
@@ -331,10 +372,11 @@ class LangChainMemoryService:
                 return None
             
             # Reconstruct memory
-            memory = ConversationBufferMemory(
+            memory = ConversationBufferWindowMemory(
                 return_messages=True,
                 human_prefix="User",
-                ai_prefix="Assistant"
+                ai_prefix="Assistant",
+                k=5
             )
             
             # Restore messages

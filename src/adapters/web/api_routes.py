@@ -140,16 +140,19 @@ async def analyze_market(
             context=context
         )
         
+        # Convert to dict immediately while we have the object in memory/session context
+        result_dict = result.to_dict()
+        
         # Cache result in background
         background_tasks.add_task(
             analysis_service.cache_analysis,
-            result
+            result 
         )
         
         return AnalysisResponse(
             query=request.query,
             asset_symbol=result.asset_symbol,
-            analysis=result.to_dict(),
+            analysis=result_dict,
             confidence=result.overall_confidence,
             timestamp=result.created_at.isoformat()
         )

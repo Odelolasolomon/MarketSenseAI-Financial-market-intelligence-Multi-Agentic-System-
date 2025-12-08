@@ -1,1 +1,1 @@
-"""Application layer - Business logic and use cases"""
+"""Web adapters - FastAPI application and routes"""

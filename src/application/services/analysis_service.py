@@ -145,6 +145,14 @@ class AnalysisService:
             # USE THE ASYNC VERSION
             async with self.db.get_session_async() as session:
                 session.add(analysis)
+                # Commit breaks the link, but we can refresh to get fresh data
+                # However, with standard Session (not AsyncSession), commit is sync.
+                # get_session_async is yielding a *synchronous* Session wrapper in an async manager.
+                # So we use sync methods.
+                session.commit()
+                session.refresh(analysis)
+                # Expunge checks the object out of the session so it persists after session.close()
+                session.expunge(analysis)
                 logger.info("Analysis stored successfully.")
         except Exception as e:
             logger.error(f"Error storing analysis: {str(e)}")

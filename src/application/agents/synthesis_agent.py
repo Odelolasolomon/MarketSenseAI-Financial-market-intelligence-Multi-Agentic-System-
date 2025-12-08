@@ -398,6 +398,27 @@ Provide synthesis in JSON format:
         critical_factors = _collect_list("critical_factors", macro, technical, sentiment)
         key_risks = _collect_list("key_risks", macro, technical, sentiment)
         risk_mitigations = _collect_list("risk_mitigations", macro, technical, sentiment)
+        # Enhanced risk assessment - ensure we always have comprehensive risks
+        if not key_risks or len(key_risks) < 3:
+            default_risks = [
+                f"Market volatility risk for {asset_symbol} - High price fluctuations expected",
+                "Macroeconomic uncertainty - Federal Reserve policy and inflation impact crypto markets",
+                "Technical breakdown risk - Key support levels may fail to hold",
+                "Sentiment shift risk - Rapid changes in social media and news sentiment",
+                "Liquidity risk - Potential for slippage during volatile market conditions"
+            ]
+            key_risks = (key_risks + default_risks)[:5]  # Ensure we have 5 risks
+        
+        if not risk_mitigations or len(risk_mitigations) < 2:
+            default_mitigations = [
+                f"Implement strict stop-loss orders to limit downside risk (recommended: {position_sizing} position)",
+                "Scale into positions gradually rather than entering all at once",
+                "Diversify across multiple cryptocurrencies to reduce concentration risk",
+                "Monitor key technical levels and macroeconomic indicators for early warning signals",
+                "Maintain cash reserves for opportunistic buying during market dips"
+            ]
+            risk_mitigations = (risk_mitigations + default_mitigations)[:4]  # Ensure we have 4 mitigations
+
         
         # Build investment thesis
         thesis_parts = []

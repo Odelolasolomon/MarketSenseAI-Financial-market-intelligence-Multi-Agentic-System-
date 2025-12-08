@@ -1,0 +1,6 @@
+coherence_score,factual_accuracy_score,reasoning_quality_score,actionability_score,risk_assessment_score,overall_quality_score,response_time_seconds,data_sources_used,confidence_score,macro_agent_score,technical_agent_score,sentiment_agent_score,synthesis_quality_score,internal_consistency_score,cross_agent_agreement_score,asset_symbol,query,timestamp,evaluation_model
+78,85,82,88,92,84,97.07219123840332,5,0.6333333333333333,60.0,70.0,60.0,75.0,50.0,50.0,BTC,Should I buy Bitcoin now for a short-term trade?,2025-12-08T16:33:59.009250,llama-3.1-8b-instant
+80,70,75,85,80,78,92.41908240318298,5,0.5866666666666666,60.0,70.0,50.0,75.0,50.0,50.0,ETH,Is Ethereum a good long-term investment?,2025-12-08T16:35:32.304683,llama-3.1-8b-instant
+92,85,88,90,92,89,85.84577798843384,5,0.6333333333333333,70.0,70.0,60.0,75.0,50.0,50.0,BTC,What are the main risks of investing in Bitcoin right now?,2025-12-08T16:36:58.947991,llama-3.1-8b-instant
+92,95,88,90,92,91,82.20244550704956,5,0.5933333333333334,60.0,70.0,60.0,75.0,50.0,50.0,ETH,Should I hold or sell my Ethereum position?,2025-12-08T16:38:22.033233,llama-3.1-8b-instant
+92,95,88,90,92,91,85.53871488571167,5,0.5933333333333334,70.0,70.0,50.0,75.0,50.0,50.0,BTC,Analyze Bitcoin's current market conditions,2025-12-08T16:39:48.360116,llama-3.1-8b-instant

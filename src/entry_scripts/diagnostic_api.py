@@ -219,8 +219,8 @@ async def main():
     print(f"\n  Overall: {working}/{total} services working")
     
     if working < total:
-        print("\n  ⚠ WARNING: Some services are not working!")
-        print("  Your analysis results may be incomplete or inaccurate.")
+        print("\n   WARNING: Some services are not working!")
+        print("  the analysis results may be incomplete or inaccurate.")
         print("  Please check your API keys and network connection.")
     else:
         print("\n  ✓ All services are working correctly!")

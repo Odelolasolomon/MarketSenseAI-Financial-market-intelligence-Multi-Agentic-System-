@@ -7,8 +7,7 @@ from datetime import datetime, timedelta
 from src.domain.entities.conversation import (
     ConversationContext, ConversationSession, ConversationMessage, MessageRole
 )
-#from src.infrastructure.cache import redis_client
-
+from src.infrastructure.repositories.conversation_repository import ConversationRepository
 from src.utilities.logger import get_logger
 import json
 
@@ -16,6 +15,9 @@ from src.infrastructure.cache import get_cache
 redis_client = get_cache()
 
 logger = get_logger(__name__)
+
+# Initialize repository for database persistence
+_repository = ConversationRepository()
 
 # Session storage: in-memory cache (backed by Redis for persistence)
 _sessions: Dict[str, ConversationSession] = {}
@@ -75,7 +77,10 @@ class ConversationManager:
         
         conversation = session.get_or_create_conversation(conversation_id, asset_symbol)
         
-        # Persist updates
+        # Persist to database
+        _repository.save_conversation(conversation)
+        
+        # Persist to Redis cache
         ConversationManager._persist_session(session)
         
         logger.info(f"Created/retrieved conversation {conversation_id} for asset {asset_symbol}")
@@ -100,7 +105,13 @@ class ConversationManager:
         conversation = session.conversations[conversation_id]
         message = conversation.add_message(role, content, metadata)
         
-        # Persist updates
+        # Persist message to database
+        _repository.save_message(message, conversation_id)
+        
+        # Update conversation in database
+        _repository.save_conversation(conversation)
+        
+        # Persist to Redis cache
         ConversationManager._persist_session(session)
         
         logger.info(f"Added {role.value} message to conversation {conversation_id}")
@@ -146,7 +157,12 @@ class ConversationManager:
         conversation.previous_action = action
         conversation.last_updated = datetime.now()
         
-        # Persist updates
+        # Persist to database
+        _repository.update_conversation_context(
+            conversation_id, outlook, confidence, action
+        )
+        
+        # Persist to Redis cache
         session = ConversationManager.get_session(session_id)
         ConversationManager._persist_session(session)
         
