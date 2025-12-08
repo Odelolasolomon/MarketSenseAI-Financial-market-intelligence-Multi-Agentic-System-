@@ -51,7 +51,7 @@ MarketSenseAI is an intelligent financial analysis platform that combines the po
 
 ## 🏗️ System Architecture
 
-![MarketSense System Architecture](./Sys.jpg)
+![MarketSense System Architecture](Sys.jpg)
 
 The diagram above illustrates the complete system architecture, showing how data flows through our multi-agent system, from data sources through specialist agents to the synthesis layer, and finally to the user interface.
 

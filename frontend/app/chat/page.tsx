@@ -91,8 +91,7 @@ export default function ChatPage() {
     }
   }, [conversationIdParam]);
 
-  const { messages, sendMessage, status, regenerate, setMessages } = useChat({
-    api: "/api/chat",
+  const { messages, append, status, reload, setMessages } = useChat({
     body: {
       userId,
       conversationId, // Pass conversation ID to backend to resume/attach
@@ -140,8 +139,8 @@ export default function ChatPage() {
       return;
     }
 
-    sendMessage(
-      { text: message.text.trim() },
+    append(
+      { role: "user", content: message.text.trim() },
       {
         body: {
           asset: selectedAsset,
@@ -155,8 +154,8 @@ export default function ChatPage() {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    sendMessage(
-      { text: suggestion },
+    append(
+      { role: "user", content: suggestion },
       {
         body: {
           asset: selectedAsset,
@@ -239,7 +238,7 @@ export default function ChatPage() {
                               {message.role === "assistant" && isLastMessage && (
                                 <MessageActions>
                                   <MessageAction
-                                    onClick={() => regenerate()}
+                                    onClick={() => reload()}
                                     label="Retry"
                                   >
                                     <RefreshCcwIcon className="size-3" />
