@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_API_URL}/analyze`,
+      `${process.env.NEXT_PUBLIC_API_URL}/analyze`,
       {
         method: "POST",
         headers: {

@@ -184,7 +184,14 @@ class RAGService:
                 logger.debug(f"Found collection '{variation}' for requested name '{collection_name}'")
                 return self.collections[variation]
         
-        logger.warning(f"Collection '{collection_name}' not found (tried mapping and variations)")
+        # Only log warning once per collection name to avoid spam
+        if not hasattr(self, '_warned_collections'):
+            self._warned_collections = set()
+        
+        if collection_name not in self._warned_collections:
+            logger.warning(f"Collection '{collection_name}' not found (tried mapping and variations)")
+            self._warned_collections.add(collection_name)
+        
         return None
     
     async def add_documents(
